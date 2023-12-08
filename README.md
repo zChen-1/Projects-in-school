@@ -5,7 +5,7 @@
 ![alt text](/image/MPG.png)
 
 ##
-## Chatbot
+## Chatbot (Using TF-IDF vectorization)
 ### The part I am responsible for and participate in：
 * Build and train the model
 * [Report of the Chatbot](https://github.com/zChen-1/Projects-in-school/blob/0976c60c597f6cb0c0ceecdc69211a0727bcef34/documents/CPSC481_Project_Report.pdf)
