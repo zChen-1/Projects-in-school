@@ -5,6 +5,8 @@
 ![alt text](/image/MPG.png)
 
 ## Chatbot
+### The part I am responsible for and participate in：
+* Build and train the model
 * Code: https://github.com/zChen-1/CPSC-481-Final-Project.git
 ![alt text](/image/Chatbot.png)
 
