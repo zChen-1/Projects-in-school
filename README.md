@@ -1,4 +1,4 @@
-# Projects-in-school
+# Some projects involved
 
 ## Predictive MPG using DNN
 * Code: https://github.com/zChen-1/CPSC483_FP.git
