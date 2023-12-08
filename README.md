@@ -25,8 +25,9 @@
 ## Building a RESTful API with Flask
 * Code: https://github.com/zChen-1/CPSC_449_Project_1.git
 
-## 
+## RTPlan Road Trip Planning Program
 * Code: https://github.com/zChen-1/zchen-1.github.io.git
+* [Document of RTPlan Road Trip Planning Program](https://github.com/zChen-1/Projects-in-school/blob/259c28429d0940db6891b1e0fba0fb8f724a8dd5/image/CPSC_491.pdf)
 
 
 ## microsocial forked from cpsc462/microsocial
