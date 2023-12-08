@@ -22,7 +22,7 @@
 * Initial preparation work (Analyze existing LLM models): https://docs.google.com/spreadsheets/d/1fszj4lglQOU6UL3BRDbY4DaKlWOxtF8eFkf94MewFGI/edit?usp=sharing
 * :two:  Prompt Engineering
 * Documents: https://drive.google.com/drive/folders/1gjUgP-LVYE42I_eZxrhAnwE5RgpiIxyY?usp=share_link
-* 
+
 
 ## Building a RESTful API with Flask
 * Code: https://github.com/zChen-1/CPSC_449_Project_1.git
@@ -35,3 +35,11 @@
 ## microsocial forked from cpsc462/microsocial
 * Participated in the development of the Notification part
 * Code: https://github.com/zChen-1/microsocial.git
+
+
+
+
+
+
+
+
