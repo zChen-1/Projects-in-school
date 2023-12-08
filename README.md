@@ -10,6 +10,7 @@
 * Build and train the model
 * Code: https://github.com/zChen-1/CPSC-481-Final-Project.git
 ![alt text](/image/Chatbot.png)
+* Report: 
 
 ##
 ## *(still continuing)* Research of LLM (Large Language Model)
