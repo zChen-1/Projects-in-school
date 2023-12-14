@@ -28,6 +28,7 @@
 
 ##
 ## Building a RESTful API with Flask
+* Include Flask application with the Database, error handlers (ex. 400, 401, 404, 500), using JWT Authentication and file handling(upload files)
 * Code: https://github.com/zChen-1/CPSC_449_Project_1.git
 
 ##
