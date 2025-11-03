@@ -1,73 +1,67 @@
 graph TB
 
-    subgraph Clients["Clients"]
-        VIEWER["👤 Viewer"]
-        RESEARCHER["👤 Researcher"]
+    %% ===== User / UI Layer =====
+    USER["👤 User in Browser"]
+
+    subgraph UI["Next.js / Web UI (Visualization)"]
+        MAP["Map View<br/>camera markers<br/>green/yellow/red"]
+        TL["Timeline Panel<br/>keyframes + clips"]
+        KP["Keyframe Gallery<br/>lazy-load thumbnails"]
+        CH["Charts<br/>vehicle & pedestrian counts"]
+        VID["HTML5 Video Player<br/>MP4 with baked boxes<br/>captions optional"]
+        ACC["Accessibility<br/>keyboard nav + captions"]
     end
 
-    subgraph API["API Search Layer"]
-        AUTH["JWT Auth<br/>HS256<br/>roles: viewer, researcher"]
-
-        LIST_CAMS["GET /api/cameras<br/>list cameras + status"]
-        KEYFRAMES["GET /api/keyframes<br/>camera_id + time_range<br/>ret: JSON + signed URLs"]
-        STATS["GET /api/statistics<br/>ret: aggregated counts"]
-        BUSIEST["GET /api/statistics/busiest<br/>ret: mat. view"]
-        CLIPS["GET /api/clips<br/>ret: JSON + signed S3 URLs"]
-        EXPORT_REQ["POST /api/export<br/>async export<br/>(researcher)"]
-        EXPORT_STATUS["GET /api/export/:job_id"]
+    %% ===== API Layer =====
+    subgraph API["FastAPI"]
+        MAP_EP["GET /api/map/cameras<br/>live status"]
+        TL_EP["GET /api/timeline/:camera_id<br/>keyframe timeline"]
+        CLIP_EP["GET /api/stream/:clip_id<br/>signed S3 URL"]
+        THUMB_EP["GET /api/thumbnails/:frame_id<br/>signed URL"]
+        CH_EP["GET /api/charts/:camera_id<br/>counts"]
     end
 
-    subgraph DB["PostgreSQL RDS"]
-        TABLES["camera, frames, events<br/>idx: camera_id, timestamp"]
-        JSONIDX["JSONB idx on class_counts<br/>for fast object queries"]
-        MV["Materialized View<br/>busiest windows per day"]
+    %% ===== Data / Media =====
+    subgraph DATA["Data Sources"]
+        RDS["PostgreSQL RDS<br/>camera status, metadata"]
+        S3KF["S3 keyframes/<br/>thumbnails (lazy)"]
+        S3CLIP["S3 clips/<br/>MP4 with boxes"]
     end
 
-    subgraph Storage["S3 Media"]
-        S3KF["keyframes/"]
-        S3CLIPS["clips/"]
-    end
+    %% ===== Flows =====
+    USER --> MAP
+    USER --> ACC
 
-    subgraph Jobs["Async Export System"]
-        JOBQ["Export Job Queue"]
-        JOBPKG["Package + stage result"]
-    end
+    %% map needs camera status
+    MAP --> MAP_EP
+    MAP_EP --> RDS
 
-    VIEWER --> AUTH
-    RESEARCHER --> AUTH
+    %% marker click → load timeline
+    MAP -->|"select camera"| TL
+    TL --> TL_EP
+    TL_EP --> RDS
+    TL_EP --> S3KF
 
-    AUTH --> LIST_CAMS
-    AUTH --> KEYFRAMES
-    AUTH --> STATS
-    AUTH --> BUSIEST
-    AUTH --> CLIPS
-    AUTH --> EXPORT_REQ
-    AUTH --> EXPORT_STATUS
+    %% keyframes (lazy thumbnails)
+    KP --> THUMB_EP
+    THUMB_EP --> S3KF
 
-    LIST_CAMS --> TABLES
-    KEYFRAMES --> TABLES
-    KEYFRAMES --> JSONIDX
-    STATS --> TABLES
-    BUSIEST --> MV
-    CLIPS --> TABLES
+    %% charts
+    TL --> CH
+    CH --> CH_EP
+    CH_EP --> RDS
 
-    KEYFRAMES --> S3KF
-    CLIPS --> S3CLIPS
+    %% video playback
+    TL -->|"select clip"| VID
+    VID --> CLIP_EP
+    CLIP_EP --> S3CLIP
 
-    EXPORT_REQ --> JOBQ
-    JOBQ --> JOBPKG
-    JOBPKG --> S3CLIPS
-    JOBPKG --> S3KF
-    JOBPKG --> TABLES
-    JOBPKG --> EXPORT_STATUS
-
-    style API fill:#e6f7ff,stroke:#339,stroke-width:1px
-    style DB fill:#edf0ff,stroke:#335,stroke-width:1px
-    style Storage fill:#f9ffff,stroke:#339,stroke-width:1px
-    style Jobs fill:#fff9e6,stroke:#d9a520,stroke-width:1px
-    style VIEWER fill:#ffe1e1
-    style RESEARCHER fill:#ffe1e1
-    style S3KF fill:#e6ffe6
-    style S3CLIPS fill:#e6f3ff
+    %% ===== Styling =====
+    style UI fill:#e6f7ff,stroke:#339,stroke-width:1px
+    style API fill:#f0f5ff,stroke:#335,stroke-width:1px
+    style DATA fill:#fff9e6,stroke:#d9a520,stroke-width:1px
+    style RDS fill:#cce5ff,stroke:#335
+    style S3KF fill:#e6ffe6,stroke:#333
+    style S3CLIP fill:#e6f3ff,stroke:#333
     style JSONIDX fill:#fff4cc
     style MV fill:#d6e4ff
