@@ -1,14 +1,13 @@
 graph TB
 
-    %% ===== Clients / Roles =====
     subgraph Clients["Clients"]
         VIEWER["👤 Viewer"]
         RESEARCHER["👤 Researcher"]
     end
 
-    %% ===== API Layer =====
     subgraph API["FastAPI Search Layer"]
         AUTH["JWT Auth<br/>HS256<br/>roles: viewer, researcher"]
+
         LIST_CAMS["GET /api/cameras<br/>list cameras + status"]
         KEYFRAMES["GET /api/keyframes<br/>camera_id + time_range<br/>ret: JSON + signed URLs"]
         STATS["GET /api/statistics<br/>ret: aggregated counts"]
@@ -18,7 +17,6 @@ graph TB
         EXPORT_STATUS["GET /api/export/:job_id"]
     end
 
-    %% ===== Data Layer =====
     subgraph DB["PostgreSQL RDS"]
         TABLES["camera, frames, events<br/>idx: camera_id, timestamp"]
         JSONIDX["JSONB idx on class_counts<br/>for fast object queries"]
@@ -35,6 +33,7 @@ graph TB
         JOBPKG["Package + stage result"]
     end
 
+    %% ===== Flows =====
     VIEWER --> AUTH
     RESEARCHER --> AUTH
 
