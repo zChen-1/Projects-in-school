@@ -20,7 +20,7 @@ graph TB
     subgraph Policies["S3 Policies & Lifecycle"]
         LOCK["Object Lock 24h<br/>no accidental delete"]
         IA["Lifecycle: >14d → S3 IA"]
-        GLACIER["Lifecycle: >6mo → Glacier"]
+        GLACIER["Lifecycle: >6 mo → Glacier"]
     end
 
     subgraph Metadata["Amazon RDS for PostgreSQL"]
