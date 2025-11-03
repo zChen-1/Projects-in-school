@@ -5,7 +5,7 @@ graph TB
         RESEARCHER["👤 Researcher"]
     end
 
-    subgraph API["FastAPI Search Layer"]
+    subgraph API["API Search Layer"]
         AUTH["JWT Auth<br/>HS256<br/>roles: viewer, researcher"]
 
         LIST_CAMS["GET /api/cameras<br/>list cameras + status"]
@@ -33,7 +33,6 @@ graph TB
         JOBPKG["Package + stage result"]
     end
 
-    %% ===== Flows =====
     VIEWER --> AUTH
     RESEARCHER --> AUTH
 
