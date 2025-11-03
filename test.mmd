@@ -27,48 +27,37 @@ graph TB
         RDS["Partitioned tables<br/>by date<br/>+ aggregates/counts"]
     end
 
-    %% Flow from ingestion/processing (implicit producer)
     PROC["Capture / Curation / Analysis Pipelines"] --> RAW
     PROC --> PRE
     PROC --> KF
     PROC --> CLIPS
     PROC --> THUMBS
     PROC --> RDS
-
-    %% Folder organization
-    KF -. "daily subfolders<br/>per camera" .-> EX1
-
-    %% Policies apply to all S3 zones
+    KF - "daily subfolders<br/>per camera" -> EX1
     RAW --> LOCK
     PRE --> LOCK
     KF --> LOCK
     CLIPS --> LOCK
     THUMBS --> LOCK
-
     RAW --> IA
     PRE --> IA
     KF --> IA
     CLIPS --> IA
     THUMBS --> IA
-
     RAW --> GLACIER
     PRE --> GLACIER
     KF --> GLACIER
     CLIPS --> GLACIER
     THUMBS --> GLACIER
-
-    %% Access control
     VIEWER -->|"signed URLs only<br/>keyframes/, clips/, thumbnails/"| KF
     VIEWER -->|"signed URLs only"| CLIPS
     VIEWER -->|"signed URLs only"| THUMBS
-
-    RESEARCHER -->|"API export endpoints<br/>(bulk/history)"| KF
+    RESEARCHER -->|"API export endpoints"| KF
     RESEARCHER --> CLIPS
     RESEARCHER --> RAW
     RESEARCHER --> PRE
     RESEARCHER --> RDS
 
-    %% Styling
     style S3Lake fill:#e6f7ff,stroke:#339,stroke-width:1px
     style RAW fill:#ffe6e6
     style PRE fill:#fff4cc
