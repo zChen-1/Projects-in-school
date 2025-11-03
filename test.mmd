@@ -1,0 +1,81 @@
+graph TB
+
+    subgraph Clients["Clients / Roles"]
+        VIEWER["👤 Viewer<br/>role: viewer"]
+        RESEARCHER["👤 Researcher<br/>role: researcher"]
+    end
+
+    subgraph S3Lake["Amazon S3 Data Lake"]
+        RAW["raw/<br/>unprocessed frames"]
+        PRE["preprocessed/<br/>filtered + resized"]
+        KF["keyframes/<br/>annotated activity frames"]
+        CLIPS["clips/<br/>short video segments"]
+        THUMBS["thumbnails/<br/>annotated previews"]
+    end
+
+    subgraph Org["S3 Folder Layout (per camera, per day)"]
+        EX1["keyframes/camera_123/2025-11-02/<br/>frame_20251102_143022.jpg"]
+    end
+
+    subgraph Policies["S3 Policies & Lifecycle"]
+        LOCK["Object Lock 24h<br/>no accidental delete"]
+        IA["Lifecycle: >14d → S3 IA"]
+        GLACIER["Lifecycle: >6mo → Glacier"]
+    end
+
+    subgraph Metadata["Amazon RDS for PostgreSQL"]
+        RDS["Partitioned tables<br/>by date<br/>+ aggregates/counts"]
+    end
+
+    %% Flow from ingestion/processing (implicit producer)
+    PROC["Capture / Curation / Analysis Pipelines"] --> RAW
+    PROC --> PRE
+    PROC --> KF
+    PROC --> CLIPS
+    PROC --> THUMBS
+    PROC --> RDS
+
+    %% Folder organization
+    KF -. "daily subfolders<br/>per camera" .-> EX1
+
+    %% Policies apply to all S3 zones
+    RAW -.-> LOCK
+    PRE -.-> LOCK
+    KF -.-> LOCK
+    CLIPS -.-> LOCK
+    THUMBS -.-> LOCK
+
+    RAW -.-> IA
+    PRE -.-> IA
+    KF -.-> IA
+    CLIPS -.-> IA
+    THUMBS -.-> IA
+
+    RAW -.-> GLACIER
+    PRE -.-> GLACIER
+    KF -.-> GLACIER
+    CLIPS -.-> GLACIER
+    THUMBS -.-> GLACIER
+
+    %% Access control
+    VIEWER -->|"signed URLs only<br/>keyframes/, clips/, thumbnails/"| KF
+    VIEWER -->|"signed URLs only"| CLIPS
+    VIEWER -->|"signed URLs only"| THUMBS
+
+    RESEARCHER -->|"API export endpoints<br/>(bulk/history)"| KF
+    RESEARCHER --> CLIPS
+    RESEARCHER --> RAW
+    RESEARCHER --> PRE
+    RESEARCHER --> RDS
+
+    %% Styling
+    style S3Lake fill:#e6f7ff,stroke:#339,stroke-width:1px
+    style RAW fill:#ffe6e6
+    style PRE fill:#fff4cc
+    style KF fill:#e6ffe6
+    style CLIPS fill:#e6f3ff
+    style THUMBS fill:#f0e6ff
+    style Metadata fill:#edf0ff,stroke:#335,stroke-width:1px
+    style RDS fill:#cce5ff,stroke:#335,stroke-width:1px
+    style Policies fill:#fff9e6,stroke:#d9a520,stroke-width:1px
+    style Clients fill:#fff0f0,stroke:#c33,stroke-width:1px
