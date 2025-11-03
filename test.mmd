@@ -1,81 +1,81 @@
 graph TB
 
-    %% ===== Clients / Roles =====
-    subgraph Clients["Clients"]
-        VIEWER["👤 Viewer"]
-        RESEARCHER["👤 Researcher"]
+    subgraph Clients["Clients / Roles"]
+        VIEWER["👤 Viewer<br/>role: viewer"]
+        RESEARCHER["👤 Researcher<br/>role: researcher"]
     end
 
-    %% ===== API Layer =====
-    subgraph API["FastAPI Search Layer"]
-        AUTH["JWT Auth<br/>HS256<br/>roles: viewer, researcher"]
-
-        LIST_CAMS["GET /api/cameras<br/>list cameras + status"]
-        KEYFRAMES["GET /api/keyframes<br/>camera_id + time_range<br/>ret: JSON + signed URLs"]
-        STATS["GET /api/statistics<br/>ret: aggregated counts"]
-        BUSIEST["GET /api/statistics/busiest<br/>ret: mat. view"]
-        CLIPS["GET /api/clips<br/>ret: JSON + signed S3 URLs"]
-        EXPORT_REQ["POST /api/export<br/>async export<br/>(researcher)"]
-        EXPORT_STATUS["GET /api/export/:job_id"]
+    subgraph S3Lake["Amazon S3 Data Lake"]
+        RAW["raw/<br/>unprocessed frames"]
+        PRE["preprocessed/<br/>filtered + resized"]
+        KF["keyframes/<br/>annotated activity frames"]
+        CLIPS["clips/<br/>short video segments"]
+        THUMBS["thumbnails/<br/>annotated previews"]
     end
 
-    %% ===== Data Layer =====
-    subgraph DB["PostgreSQL RDS"]
-        TABLES["camera, frames, events<br/>idx: camera_id, timestamp"]
-        JSONIDX["JSONB idx on class_counts<br/>for fast object queries"]
-        MV["Materialized View<br/>busiest windows per day"]
+    subgraph Org["S3 Folder Layout"]
+        EX1["keyframes/camera_123/2025-11-02/<br/>frame_20251102_143022.jpg"]
     end
 
-    subgraph Storage["S3 Media"]
-        S3KF["keyframes/"]
-        S3CLIPS["clips/"]
+    subgraph Policies["S3 Policies & Lifecycle"]
+        LOCK["Object Lock 24h<br/>no accidental delete"]
+        IA["Lifecycle: >14d → S3 IA"]
+        GLACIER["Lifecycle: >6 mo → Glacier"]
     end
 
-    subgraph Jobs["Async Export System"]
-        JOBQ["Export Job Queue"]
-        JOBPKG["Package + stage result"]
+    subgraph Metadata["Amazon RDS for PostgreSQL"]
+        RDS["Partitioned tables<br/>by date<br/>+ aggregates/counts"]
     end
 
-    %% ===== Flows =====
-    VIEWER --> AUTH
-    RESEARCHER --> AUTH
+    %% Flow from ingestion/processing (implicit producer)
+    PROC["Capture / Curation / Analysis Pipelines"] --> RAW
+    PROC --> PRE
+    PROC --> KF
+    PROC --> CLIPS
+    PROC --> THUMBS
+    PROC --> RDS
 
-    AUTH --> LIST_CAMS
-    AUTH --> KEYFRAMES
-    AUTH --> STATS
-    AUTH --> BUSIEST
-    AUTH --> CLIPS
-    AUTH --> EXPORT_REQ
-    AUTH --> EXPORT_STATUS
+    %% Folder organization
+    KF -. "daily subfolders<br/>per camera" .-> EX1
 
-    %% queries to DB
-    LIST_CAMS --> TABLES
-    KEYFRAMES --> TABLES
-    KEYFRAMES --> JSONIDX
-    STATS --> TABLES
-    BUSIEST --> MV
-    CLIPS --> TABLES
+    %% Policies apply to all S3 zones
+    RAW --> LOCK
+    PRE --> LOCK
+    KF --> LOCK
+    CLIPS --> LOCK
+    THUMBS --> LOCK
 
-    %% media resolution
-    KEYFRAMES --> S3KF
-    CLIPS --> S3CLIPS
+    RAW --> IA
+    PRE --> IA
+    KF --> IA
+    CLIPS --> IA
+    THUMBS --> IA
 
-    %% export flow
-    EXPORT_REQ --> JOBQ
-    JOBQ --> JOBPKG
-    JOBPKG --> S3CLIPS
-    JOBPKG --> S3KF
-    JOBPKG --> TABLES
-    JOBPKG --> EXPORT_STATUS
+    RAW --> GLACIER
+    PRE --> GLACIER
+    KF --> GLACIER
+    CLIPS --> GLACIER
+    THUMBS --> GLACIER
 
-    %% ===== Styling =====
-    style API fill:#e6f7ff,stroke:#339,stroke-width:1px
-    style DB fill:#edf0ff,stroke:#335,stroke-width:1px
-    style Storage fill:#f9ffff,stroke:#339,stroke-width:1px
-    style Jobs fill:#fff9e6,stroke:#d9a520,stroke-width:1px
-    style VIEWER fill:#ffe1e1
-    style RESEARCHER fill:#ffe1e1
-    style S3KF fill:#e6ffe6
-    style S3CLIPS fill:#e6f3ff
-    style JSONIDX fill:#fff4cc
-    style MV fill:#d6e4ff
+    %% Access control
+    VIEWER -->|"signed URLs only<br/>keyframes/, clips/, thumbnails/"| KF
+    VIEWER -->|"signed URLs only"| CLIPS
+    VIEWER -->|"signed URLs only"| THUMBS
+
+    RESEARCHER -->|"API export endpoints<br/>(bulk/history)"| KF
+    RESEARCHER --> CLIPS
+    RESEARCHER --> RAW
+    RESEARCHER --> PRE
+    RESEARCHER --> RDS
+
+    %% Styling
+    style S3Lake fill:#e6f7ff,stroke:#339,stroke-width:1px
+    style RAW fill:#ffe6e6
+    style PRE fill:#fff4cc
+    style KF fill:#e6ffe6
+    style CLIPS fill:#e6f3ff
+    style THUMBS fill:#f0e6ff
+    style Metadata fill:#edf0ff,stroke:#335,stroke-width:1px
+    style RDS fill:#cce5ff,stroke:#335,stroke-width:1px
+    style Policies fill:#fff9e6,stroke:#d9a520,stroke-width:1px
+    style Clients fill:#fff0f0,stroke:#c33,stroke-width:1px
