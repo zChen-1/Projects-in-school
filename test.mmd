@@ -39,23 +39,23 @@ graph TB
     KF -. "daily subfolders<br/>per camera" .-> EX1
 
     %% Policies apply to all S3 zones
-    RAW -.-> LOCK
-    PRE -.-> LOCK
-    KF -.-> LOCK
-    CLIPS -.-> LOCK
-    THUMBS -.-> LOCK
+    RAW --> LOCK
+    PRE --> LOCK
+    KF --> LOCK
+    CLIPS --> LOCK
+    THUMBS --> LOCK
 
-    RAW -.-> IA
-    PRE -.-> IA
-    KF -.-> IA
-    CLIPS -.-> IA
-    THUMBS -.-> IA
+    RAW --> IA
+    PRE --> IA
+    KF --> IA
+    CLIPS --> IA
+    THUMBS --> IA
 
-    RAW -.-> GLACIER
-    PRE -.-> GLACIER
-    KF -.-> GLACIER
-    CLIPS -.-> GLACIER
-    THUMBS -.-> GLACIER
+    RAW --> GLACIER
+    PRE --> GLACIER
+    KF --> GLACIER
+    CLIPS --> GLACIER
+    THUMBS --> GLACIER
 
     %% Access control
     VIEWER -->|"signed URLs only<br/>keyframes/, clips/, thumbnails/"| KF
