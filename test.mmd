@@ -1,67 +1,79 @@
-graph TB
+@startuml
+title AWS Data Lake Architecture (Storage-Centric)
 
-    %% ===== User / UI Layer =====
-    USER["👤 User in Browser"]
+!include <aws/common>
+!include <aws/Storage/S3>
+!include <aws/Storage/Glacier>
+!include <aws/Database/RDS>
+!include <aws/Analytics/Athena>
+!include <aws/Analytics/Glue>
+!include <aws/Compute/Lambda>
+!include <aws/General/Client>
+!include <aws/Integration/SQS>
+!include <aws/Integration/KinesisDataStreams>
+!include <aws/SecurityIdentityCompliance/IAM>
 
-    subgraph UI["Next.js / Web UI (Visualization)"]
-        MAP["Map View<br/>camera markers<br/>green/yellow/red"]
-        TL["Timeline Panel<br/>keyframes + clips"]
-        KP["Keyframe Gallery<br/>lazy-load thumbnails"]
-        CH["Charts<br/>vehicle & pedestrian counts"]
-        VID["HTML5 Video Player<br/>MP4 with baked boxes<br/>captions optional"]
-        ACC["Accessibility<br/>keyboard nav + captions"]
-    end
+rectangle "Ingestion Layer" {
+  AWSGeneralClient(camera, "Traffic Cameras / Sources")
+  AWSIntegrationKinesisDataStreams(kinesis, "Kinesis Data Streams", "video/events")
+  AWSComputeLambda(ingestLambda, "Ingestion Lambda", "frame extraction / ETL trigger")
 
-    %% ===== API Layer =====
-    subgraph API["FastAPI"]
-        MAP_EP["GET /api/map/cameras<br/>live status"]
-        TL_EP["GET /api/timeline/:camera_id<br/>keyframe timeline"]
-        CLIP_EP["GET /api/stream/:clip_id<br/>signed S3 URL"]
-        THUMB_EP["GET /api/thumbnails/:frame_id<br/>signed URL"]
-        CH_EP["GET /api/charts/:camera_id<br/>counts"]
-    end
+  camera --> kinesis
+  kinesis --> ingestLambda
+}
 
-    %% ===== Data / Media =====
-    subgraph DATA["Data Sources"]
-        RDS["PostgreSQL RDS<br/>camera status, metadata"]
-        S3KF["S3 keyframes/<br/>thumbnails (lazy)"]
-        S3CLIP["S3 clips/<br/>MP4 with boxes"]
-    end
+rectangle "Data Lake (Amazon S3)" {
+  AWSStorageS3(s3raw, "S3 Bucket: raw/", "Unprocessed frames, clips, metadata")
+  AWSStorageS3(s3pre, "S3 Bucket: preprocessed/", "Cleaned/resized frames")
+  AWSStorageS3(s3cur, "S3 Bucket: curated/", "Keyframes, counts, enriched data")
+  AWSStorageS3(s3gold, "S3 Bucket: analytics/", "Daily summaries, BI-ready")
+}
 
-    %% ===== Flows =====
-    USER --> MAP
-    USER --> ACC
+rectangle "Processing & Metadata" {
+  AWSAnalyticsGlue(glue, "AWS Glue", "ETL + Data Catalog")
+  AWSDatabaseRDS(rds, "Amazon RDS (PostgreSQL)", "Metadata, aggregates, partitions")
+}
 
-    %% map needs camera status
-    MAP --> MAP_EP
-    MAP_EP --> RDS
+rectangle "Query & Access" {
+  AWSAnalyticsAthena(athena, "Amazon Athena", "SQL on S3")
+  AWSGeneralClient(bi, "BI / Web UI / FastAPI")
+}
 
-    %% marker click → load timeline
-    MAP -->|"select camera"| TL
-    TL --> TL_EP
-    TL_EP --> RDS
-    TL_EP --> S3KF
+rectangle "Governance & Archival" {
+  AWSSecurityIdentityComplianceIAM(iam, "AWS IAM", "RBAC, signed URLs")
+  AWSStorageGlacier(glacier, "S3 Glacier", "Archive > 6 months")
+}
 
-    %% keyframes (lazy thumbnails)
-    KP --> THUMB_EP
-    THUMB_EP --> S3KF
+' Ingestion to S3
+ingestLambda --> s3raw : "PUT objects\n(raw frames, clips)"
 
-    %% charts
-    TL --> CH
-    CH --> CH_EP
-    CH_EP --> RDS
+' Glue reads raw, writes preprocessed/curated
+glue --> s3raw : "crawl / read"
+glue --> s3pre : "write cleaned"
+glue --> s3cur : "write enriched"
+glue --> s3gold : "write aggregates"
+glue --> rds : "write table-level metadata"
 
-    %% video playback
-    TL -->|"select clip"| VID
-    VID --> CLIP_EP
-    CLIP_EP --> S3CLIP
+' Athena queries curated/gold
+athena --> s3cur
+athena --> s3gold
+bi --> athena : "SQL queries"
+bi --> rds : "camera stats, counts"
 
-    %% ===== Styling =====
-    style UI fill:#e6f7ff,stroke:#339,stroke-width:1px
-    style API fill:#f0f5ff,stroke:#335,stroke-width:1px
-    style DATA fill:#fff9e6,stroke:#d9a520,stroke-width:1px
-    style RDS fill:#cce5ff,stroke:#335
-    style S3KF fill:#e6ffe6,stroke:#333
-    style S3CLIP fill:#e6f3ff,stroke:#333
-    style JSONIDX fill:#fff4cc
-    style MV fill:#d6e4ff
+' Lifecycle to Glacier
+s3raw --> glacier : "Lifecycle policy (14d -> IA -> Glacier)"
+s3pre --> glacier : "Lifecycle policy"
+
+' Catalog
+glue --> athena : "Data Catalog"
+glue --> bi : "schemas"
+
+' Security
+iam ..> s3raw
+iam ..> s3pre
+iam ..> s3cur
+iam ..> s3gold
+iam ..> athena
+iam ..> bi
+
+@enduml
