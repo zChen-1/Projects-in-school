@@ -1,0 +1,79 @@
+@startuml
+title AWS Data Lake Architecture (Storage-Centric)
+
+!include <aws/common>
+!include <aws/Storage/S3>
+!include <aws/Storage/Glacier>
+!include <aws/Database/RDS>
+!include <aws/Analytics/Athena>
+!include <aws/Analytics/Glue>
+!include <aws/Compute/Lambda>
+!include <aws/General/Client>
+!include <aws/Integration/SQS>
+!include <aws/Integration/KinesisDataStreams>
+!include <aws/SecurityIdentityCompliance/IAM>
+
+rectangle "Ingestion Layer" {
+  AWSGeneralClient(camera, "Traffic Cameras / Sources")
+  AWSIntegrationKinesisDataStreams(kinesis, "Kinesis Data Streams", "video/events")
+  AWSComputeLambda(ingestLambda, "Ingestion Lambda", "frame extraction / ETL trigger")
+
+  camera --> kinesis
+  kinesis --> ingestLambda
+}
+
+rectangle "Data Lake (Amazon S3)" {
+  AWSStorageS3(s3raw, "S3 Bucket: raw/", "Unprocessed frames, clips, metadata")
+  AWSStorageS3(s3pre, "S3 Bucket: preprocessed/", "Cleaned/resized frames")
+  AWSStorageS3(s3cur, "S3 Bucket: curated/", "Keyframes, counts, enriched data")
+  AWSStorageS3(s3gold, "S3 Bucket: analytics/", "Daily summaries, BI-ready")
+}
+
+rectangle "Processing & Metadata" {
+  AWSAnalyticsGlue(glue, "AWS Glue", "ETL + Data Catalog")
+  AWSDatabaseRDS(rds, "Amazon RDS (PostgreSQL)", "Metadata, aggregates, partitions")
+}
+
+rectangle "Query & Access" {
+  AWSAnalyticsAthena(athena, "Amazon Athena", "SQL on S3")
+  AWSGeneralClient(bi, "BI / Web UI / FastAPI")
+}
+
+rectangle "Governance & Archival" {
+  AWSSecurityIdentityComplianceIAM(iam, "AWS IAM", "RBAC, signed URLs")
+  AWSStorageGlacier(glacier, "S3 Glacier", "Archive > 6 months")
+}
+
+' Ingestion to S3
+ingestLambda --> s3raw : "PUT objects\n(raw frames, clips)"
+
+' Glue reads raw, writes preprocessed/curated
+glue --> s3raw : "crawl / read"
+glue --> s3pre : "write cleaned"
+glue --> s3cur : "write enriched"
+glue --> s3gold : "write aggregates"
+glue --> rds : "write table-level metadata"
+
+' Athena queries curated/gold
+athena --> s3cur
+athena --> s3gold
+bi --> athena : "SQL queries"
+bi --> rds : "camera stats, counts"
+
+' Lifecycle to Glacier
+s3raw --> glacier : "Lifecycle policy (14d -> IA -> Glacier)"
+s3pre --> glacier : "Lifecycle policy"
+
+' Catalog
+glue --> athena : "Data Catalog"
+glue --> bi : "schemas"
+
+' Security
+iam ..> s3raw
+iam ..> s3pre
+iam ..> s3cur
+iam ..> s3gold
+iam ..> athena
+iam ..> bi
+
+@enduml
